@@ -627,7 +627,7 @@ export default class GooglePlacesAutocomplete extends Component {
 
     this.setState({
       listViewDisplayed: false,
-      dataSource: this.state.dataSource.cloneWithRows(this.buildRowsFromResults([])),
+      dataSource: this.buildRowsFromResults([]),
     });
   }
 
