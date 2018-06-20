@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Qs from 'qs';
 import debounce from 'lodash.debounce';
+import _ from 'underscore';
 
 const WINDOW = Dimensions.get('window');
 
@@ -84,6 +85,7 @@ export default class GooglePlacesAutocomplete extends Component {
   }
 
   getInitialState = () => ({
+    hasQueried: false,
     text: this.props.getDefaultValue(),
     dataSource: this.buildRowsFromResults([]),
     listViewDisplayed: this.props.listViewDisplayed === 'auto' ? false : this.props.listViewDisplayed,
@@ -112,7 +114,27 @@ export default class GooglePlacesAutocomplete extends Component {
       isPredefinedPlace: true
     }));
 
-    return [...res, ...results];
+    let compiled;
+
+    if (this.props.limit) {
+      compiled = [...res, ..._.first(results, this.props.limit)];
+    } else {
+      compiled = [...res, ...results];
+    }
+
+    if (this.props.showCustomAddressOption &&
+      (
+        (results.length > 0 && this.state.text.length > this.props.minLength)
+        || (this.state && this.state.hasQueried)
+      )
+    ) {
+      compiled.push({
+        description: this.props.customAddressOptionLabel,
+        isCustomAddress: true,
+      });
+    }
+
+    return compiled;
   }
 
   componentWillMount() {
@@ -210,6 +232,12 @@ export default class GooglePlacesAutocomplete extends Component {
   }
 
   _onPress = (rowData) => {
+    if (rowData.isCustomAddress) {
+      if (this.props.onCustomAddress) {
+        this.props.onCustomAddress();
+      }
+      return;
+    }
     if (rowData.isPredefinedPlace !== true && this.props.fetchDetails === true) {
       if (rowData.isLoading === true) {
         // already requesting
@@ -465,6 +493,7 @@ export default class GooglePlacesAutocomplete extends Component {
 
               this._results = results;
               this.setState({
+                hasQueried: true,
                 dataSource: this.buildRowsFromResults(results),
               });
             }
@@ -526,7 +555,7 @@ export default class GooglePlacesAutocomplete extends Component {
     }
 
     return (
-      <Text style={[{flex: 1}, this.props.suppressDefaultStyles ? {} : defaultStyles.description, this.props.styles.description, rowData.isPredefinedPlace ? this.props.styles.predefinedPlacesDescription : {}]}
+      <Text style={[{flex: 1}, defaultStyles.description, this.props.styles.description, rowData.isPredefinedPlace ? this.props.styles.predefinedPlacesDescription : {}, rowData.isCustomAddress ? this.props.styles.useCustomAddressDescription : {}]}
         numberOfLines={this.props.numberOfLines}
       >
         {this._renderDescription(rowData)}
@@ -589,11 +618,16 @@ export default class GooglePlacesAutocomplete extends Component {
     );
   }
 
+  blur() {
+    this._onBlur();
+  }
+
   _onBlur = () => {
     this.triggerBlur();
 
     this.setState({
-      listViewDisplayed: false
+      listViewDisplayed: false,
+      dataSource: this.state.dataSource.cloneWithRows(this.buildRowsFromResults([])),
     });
   }
 
@@ -691,7 +725,7 @@ export default class GooglePlacesAutocomplete extends Component {
               placeholder={this.props.placeholder}
               onSubmitEditing={this.props.onSubmitEditing}
               placeholderTextColor={this.props.placeholderTextColor}
-              onFocus={onFocus ? () => {this._onFocus(); onFocus()} : this._onFocus}
+              onFocus={onFocus ? (e) => {this._onFocus(); onFocus(e)} : this._onFocus}
               clearButtonMode="while-editing"
               underlineColorAndroid={this.props.underlineColorAndroid}
               { ...userProps }
