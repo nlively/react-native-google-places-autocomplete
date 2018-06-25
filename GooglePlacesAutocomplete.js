@@ -151,6 +151,12 @@ export default class GooglePlacesAutocomplete extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
+    if (!this.state.listViewDisplayed) {
+      this.setState({
+        text: this.props.getDefaultValue()
+      });
+    }
+
     if (nextProps.listViewDisplayed !== 'auto') {
       this.setState({
         listViewDisplayed: nextProps.listViewDisplayed,
